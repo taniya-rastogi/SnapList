@@ -1,3 +1,5 @@
+//crud.js
+
 let form_saveBtn_parent = document.querySelector(".form_saveBtn_parent");
 let msg = document.querySelector(".msg");
 let add_student_form = document.querySelector("#add_student_form");
@@ -14,37 +16,45 @@ let searchBtn = document.querySelector(".searchBtn");
 let show_table_tbody = document.querySelector(".show_table_tbody");
 let search_table_tbody = document.querySelector(".search_table_tbody");
 let empty_search_input_msg = document.querySelector(".empty_search_input_msg");
-
+let totalStd = 0;
+let currentPage = 1; // track current page for real-time refresh
 
 //Add show pages buttons 
 function show_pages() {
-    let totalStd = 50;
+    
     let limit = 5;
-    for (i = 1; i <= totalStd / limit; i++) {
-        // dynamically creating pagination buttons 
-        pagination.innerHTML += "<ul class='pagination'><li class='page_item'><a class='page-link' href='#' data-id=" + i + "> " + i + " </a></li></ul>"
+    pagination.innerHTML = "";
+    for (let i = 1; i <= Math.ceil(totalStd / limit); i++) {
+        pagination.innerHTML += `
+          <li class="page-item">
+            <a class="page-link" href="#" data-id="${i}">${i}</a>
+          </li>`;
     }
-
 }
-show_pages(); //to show pagination buttons
-show_student_data(1); // here 1 is page number
+
+updatePaginationAndShow();
+
 
 //by clicking on the page number, show students data
 pagination.addEventListener("click", function (e) {
     if (e.target.classList.contains("page-link")) {
-        let pageNum = e.target.getAttribute("data-id");
-        show_student_data(pageNum); //show student data according to the page number
+        currentPage = parseInt(e.target.getAttribute("data-id"));
+        updatePaginationAndShow();
+        // show data of clicked page
     }
-})
+});
+
 
 //show student data in normal table
 function show_student_data(pageNum) {
+    console.log("📢 show_student_data called with page:", pageNum);
     show_table_tbody.innerHTML = ""; //whenever show_student_data function will be called...firstly the whole data of normal table will be removed then the new data (after delete or save or update) will be displayed
    
     const xhr = new XMLHttpRequest(); //XMLHttpRequest is a class, xhr is a object
     xhr.open("GET", `http_get_student_data.php?id=${pageNum}`, true);
 
     xhr.onload = () => {
+        console.log("📦 RAW RESPONSE:", xhr.responseText);
         if (xhr.status === 200) {
             let response = JSON.parse(xhr.responseText); // converting json String to Js object
             let limit = 5;
@@ -71,7 +81,7 @@ function show_student_data(pageNum) {
 
 //create operation or save student
 function save_Student(e) {
-    // e.preventDefault(); //it stops reloading
+    e.preventDefault(); //it stops reloading
 
     let nameField = document.querySelector(".nameField").value.trim();
     let emailField = document.querySelector(".emailField").value.trim();
@@ -94,7 +104,7 @@ function save_Student(e) {
                 if (xhr.status === 200) {
                     add_student_form.reset();
                     msg.innerHTML = "<div class='alert alert-success mt-4' role='alert'>Student's data saved successfully!</div>"
-                    show_student_data(1);
+                    updatePaginationAndShow();
                 } else {
                     msg.innerHTML = "<div class='alert alert-danger mt-4' role='alert'>Fill all the fields!</div>"
                 }
@@ -106,7 +116,7 @@ function save_Student(e) {
             };
             xhr.send(JSON.stringify(myData)); 
             email_invalid_msg.innerText = "";
-            show_student_data(1);
+            
         } else {
             email_invalid_msg.innerText = "*Email is not valid!";
         }
@@ -122,7 +132,7 @@ function delete_student(studentId) {
         if (xhr.status === 200) {
             msg.innerHTML = "<div class='alert alert-danger mt-4' role='alert'>Student's data deleted successfully!</div>"
             // show_student_data(1);    
-            search(search_input.value);
+            updatePaginationAndShow();
         } else {
             msg.innerHTML = "<div class='alert alert-danger mt-4' role='alert'>Problem occured! in deletion</div>"
         }
@@ -168,8 +178,8 @@ function update_student(studentId) {
             if (xhr.status === 200) {
                 add_student_form.reset();
                 msg.innerHTML = "<div class='alert alert-success mt-4' role='alert'>Student's data updated successfully!</div>"
-                show_student_data(1);   //to update info from show table
-                search(search_input.value);  //to update info form search table
+                updatePaginationAndShow();
+
 
             } else {
                 msg.innerHTML = "<div class='alert alert-danger mt-4' role='alert'>Fill all the fields!</div>"
@@ -191,23 +201,13 @@ function update_student(studentId) {
     }
 }
 
-function show_single_student_in_search_list(studentId){
-    show_table_tbody.innerHTML += "<tr><td>" + 1 +
-    "</td><td>" + response[studentId].name +
-    "</td><td>" + response[studentId].email +
-    "</td><td>" + response[studentId].password +
-    "</td><td><button type='button' class='btn btn-primary list_updateBtn me-3' data-id='" + response[studentId].id +
-    "'>Update</button><button type='button' class='btn btn-danger deleteBtn' data-id='" + response[studentId].id +
-    "'>Delete</button></td></tr>"
-}
-
-
-
 show_table_tbody.addEventListener("click", function (e) {
     if (e.target.classList.contains("deleteBtn")) { //for delete button
         let studentId = e.target.getAttribute("data-id");
         delete_student(studentId);
-        show_student_data(1);
+        
+
+        
 
     } else if (e.target.classList.contains("list_updateBtn")) { //for list update button
         let studentId = e.target.getAttribute("data-id");
@@ -218,7 +218,8 @@ search_table_tbody.addEventListener("click", function (e) {
     if (e.target.classList.contains("deleteBtn")) { //for delete button
         let studentId = e.target.getAttribute("data-id");
         delete_student(studentId);
-        show_student_data(1);
+        
+        
 
     } else if (e.target.classList.contains("list_updateBtn")) { //for list update button
         let studentId = e.target.getAttribute("data-id");
@@ -227,18 +228,20 @@ search_table_tbody.addEventListener("click", function (e) {
 })
 
 form_saveBtn_parent.addEventListener("click", function (e) {
+    e.preventDefault(); // <<< Add this at the top
+
     if (e.target.classList.contains("form_update_button")) {
         let studentId = e.target.getAttribute("data-id");
         if (studentId) {
             update_student(studentId);
-
         } else {
-            msg.innerHTML = "<div class='alert alert-danger mt-4' role='alert'>Error! in updation</div>"
+            msg.innerHTML = "<div class='alert alert-danger mt-4' role='alert'>Error! in updation</div>";
         }
     } else {
         save_Student(e);
     }
-})
+});
+
 function validateEmail(email) {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailPattern.test(email);
@@ -246,7 +249,8 @@ function validateEmail(email) {
 //Search data
 
 function search() {
-    if(typeof search_input === 'undefined' || search_input.value.trim() === ""){ //used typeof to check if search_input exists/defined or undefined
+    if (search_input.value.trim() === "") {
+ //used typeof to check if search_input exists/defined or undefined
      
         empty_search_input_msg.innerText = "\n *Search field is empty!";  
 
@@ -280,37 +284,25 @@ function search() {
         xhr.send();
     }
 }
+
+function updatePaginationAndShow() {
+    // Fetch total number of students from DB
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", "http_total_students.php", true);
+    xhr.onload = function() {
+        if(xhr.status === 200){
+            let data = JSON.parse(xhr.responseText);
+            totalStd = data.total; // update total students
+            show_pages();          // refresh pagination buttons
+            // If currentPage is too high after deletion, reset to last page
+            let lastPage = Math.ceil(totalStd / 5);
+            if(currentPage > lastPage) currentPage = lastPage;
+            show_student_data(currentPage); // show table of current page
+        }
+    }
+    xhr.send();
+}
+
+
 searchBtn.addEventListener("click", search);
 
-//things to fix
-// 4. alerting success/fail (Done)
-// 5. list id should be like 1 2 3 (Done)
-// 6. pagination (Done)
-// 1. remove faltu k comments (Done)
-// 2. proper fomrmatting
-// 3. form validation (Email Done)
-
-
-
-// priority
-// btn issue (Done)
-// search result should not append (Done)
-
-
-// updated from 'search table'- *details filled in fields autometically (Dnoe)
-//                              *updated in search table (Dnoe)
-//                              *updated in normal table (Dnoe)
-
-// delete from 'search table'-  *delete in normal table (Pending)************ jese hi search table se delete kre to normal table load honi chahiy
-//                              *delete in search table (Done)
-
-// updated from 'normal table'- *details filled in fields autometically (Done)
-//                              *updated in search table (Done)
-//                              *updated in normal table (Done)
-
-// delete from 'normal table'-  *delete in normal table (Done)
-//                              *delete in search table (Done)
-
-
-// PHP's json_encode() and Javascript's JSON.stringify()
-// PHP's json_decode()

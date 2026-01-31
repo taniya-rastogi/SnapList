@@ -1,4 +1,6 @@
 <?php
+//http_delete_student_data.php
+
 include("db_connection.php");
 
 $rawData = file_get_contents('php://input');

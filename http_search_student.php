@@ -1,4 +1,5 @@
 <?php
+    //http_search_student.php
     include("db_connection.php");
     $nameFormate = $_GET['name'];
     $sql = "SELECT * FROM student_data WHERE name LIKE '%" . $nameFormate . "%' OR email LIKE '%" . $nameFormate . "%' OR password LIKE '%" . $nameFormate . "%'";
